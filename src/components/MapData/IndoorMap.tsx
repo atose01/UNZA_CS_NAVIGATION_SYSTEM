@@ -5,8 +5,8 @@ import type { LatLngBoundsExpression } from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 import floorPlanImage from '../../assets/CS Indoor Map.png';
-import { getNodeCoordinates, navigationGraphNodes } from './navigationGraph';
-import { rooms, type Room } from './rooms';
+import { navigationGraphNodes as defaultNavigationGraphNodes, type GraphNode } from './navigationGraph';
+import { rooms as defaultRooms, type Room } from './rooms';
 
 const FLOOR_PLAN_WIDTH = 451;
 const FLOOR_PLAN_HEIGHT = 637;
@@ -118,25 +118,32 @@ function RouteOverlay({
   path,
   startNodeId,
   endNodeId,
+  navigationNodes,
 }: {
   path: string[];
   startNodeId: string | null;
   endNodeId: string | null;
+  navigationNodes: GraphNode[];
 }) {
+  const getCoordinates = (nodeId: string) => {
+    const node = navigationNodes.find((entry) => entry.id === nodeId);
+    return node ? { x: node.x, y: node.y } : null;
+  };
+
   const routePoints = useMemo(() => {
     if (!path.length) return [] as [number, number][];
 
     return path
-      .map((nodeId) => getNodeCoordinates(nodeId))
+      .map((nodeId) => getCoordinates(nodeId))
       .filter((point) => point !== null)
       .map((point) => {
         const { x, y } = point!;
         return [FLOOR_PLAN_HEIGHT - (y / 100) * FLOOR_PLAN_HEIGHT, (x / 100) * FLOOR_PLAN_WIDTH] as [number, number];
       });
-  }, [path]);
+  }, [navigationNodes, path]);
 
-  const startPoint = startNodeId ? getNodeCoordinates(startNodeId) : null;
-  const endPoint = endNodeId ? getNodeCoordinates(endNodeId) : null;
+  const startPoint = startNodeId ? getCoordinates(startNodeId) : null;
+  const endPoint = endNodeId ? getCoordinates(endNodeId) : null;
 
   return (
     <>
@@ -159,12 +166,16 @@ export function IndoorMap({
   routePath,
   startNodeId,
   endNodeId,
+  rooms = defaultRooms,
+  navigationNodes = defaultNavigationGraphNodes,
 }: {
   selectedRoomId: string | null;
   onSelectRoom: (id: string | null) => void;
   routePath: string[];
   startNodeId: string | null;
   endNodeId: string | null;
+  rooms?: Room[];
+  navigationNodes?: GraphNode[];
 }) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
@@ -194,15 +205,10 @@ export function IndoorMap({
         attributionControl={false}
         dragging
         doubleClickZoom
-        tap={false}
         touchZoom
         boxZoom
         crs={L.CRS.Simple}
-        whenCreated={(map) => {
-          mapRef.current = map;
-          // ensure correct sizing once created
-          map.invalidateSize();
-        }}
+        ref={mapRef}
       >
         <FitMapToFloorPlan />
         <ImageOverlay url={floorPlanImage} bounds={FLOOR_PLAN_BOUNDS} />
@@ -214,7 +220,7 @@ export function IndoorMap({
             onSelect={onSelectRoom}
           />
         ))}
-        {routePath.length > 0 && <RouteOverlay path={routePath} startNodeId={startNodeId} endNodeId={endNodeId} />}
+        {routePath.length > 0 && <RouteOverlay path={routePath} startNodeId={startNodeId} endNodeId={endNodeId} navigationNodes={navigationNodes} />}
       </MapContainer>
       {/* Custom controls that call Leaflet API directly to ensure predictable zoom behavior */}
       <div className="absolute top-3 right-3 z-50 flex flex-col gap-2">
@@ -260,4 +266,4 @@ export function IndoorMap({
   );
 }
 
-export { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH, navigationGraphNodes };
+export { FLOOR_PLAN_HEIGHT, FLOOR_PLAN_WIDTH, defaultNavigationGraphNodes as navigationGraphNodes };

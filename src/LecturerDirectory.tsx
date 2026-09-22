@@ -1,17 +1,20 @@
 import { Mail, MapPin, Phone, Search, UserRound } from 'lucide-react';
 import { useMemo, useState } from 'react';
 
-import { filterLecturers, LECTURER_PROFILES, type LecturerProfile } from './navigationLogic';
+import { filterLecturers, type LecturerProfile } from './navigationLogic';
 
 type LecturerDirectoryProps = {
+  lecturers?: LecturerProfile[];
+  canManage?: boolean;
+  onCreateLecturer?: () => void;
   onSelectLecturer: (lecturer: LecturerProfile) => void;
   onNavigateToOffice: (lecturer: LecturerProfile) => void;
 };
 
-export function LecturerDirectory({ onSelectLecturer, onNavigateToOffice }: LecturerDirectoryProps) {
+export function LecturerDirectory({ lecturers = [], canManage = false, onCreateLecturer, onSelectLecturer, onNavigateToOffice }: LecturerDirectoryProps) {
   const [query, setQuery] = useState('');
 
-  const filteredLecturers = useMemo(() => filterLecturers(query, LECTURER_PROFILES), [query]);
+  const filteredLecturers = useMemo(() => filterLecturers(query, lecturers), [lecturers, query]);
 
   return (
     <div className="h-full overflow-y-auto p-4">
@@ -20,6 +23,7 @@ export function LecturerDirectory({ onSelectLecturer, onNavigateToOffice }: Lect
           <h2 className="text-base font-semibold text-slate-100">Lecturer directory</h2>
           <p className="text-xs text-slate-400">Search by name, course code, room, building, or department</p>
         </div>
+        {canManage && onCreateLecturer && <button type="button" onClick={onCreateLecturer} className="rounded-lg bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-500">Add lecturer</button>}
 
         <div className="relative w-full md:max-w-md">
           <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
@@ -53,6 +57,7 @@ export function LecturerDirectory({ onSelectLecturer, onNavigateToOffice }: Lect
                   <div className="text-sm font-semibold text-slate-100">{lecturer.fullName}</div>
                   <div className="text-[11px] text-blue-400">{lecturer.academicTitle}</div>
                   <div className="mt-2 text-[11px] text-slate-400">{lecturer.department}</div>
+                  {lecturer.specialization && <div className="text-[11px] text-slate-500">{lecturer.specialization}</div>}
                 </div>
               </div>
 
@@ -84,9 +89,9 @@ export function LecturerDirectory({ onSelectLecturer, onNavigateToOffice }: Lect
               </div>
 
               <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-300">
-                <a href={`mailto:${lecturer.email}`} className="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-1 hover:border-blue-500 hover:text-blue-200">
+                {lecturer.email && <a href={`mailto:${lecturer.email}`} className="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-1 hover:border-blue-500 hover:text-blue-200">
                   <Mail size={12} /> Email
-                </a>
+                </a>}
                 {lecturer.phone && (
                   <a href={`tel:${lecturer.phone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-1 rounded-full border border-slate-700 px-2 py-1 hover:border-blue-500 hover:text-blue-200">
                     <Phone size={12} /> Call

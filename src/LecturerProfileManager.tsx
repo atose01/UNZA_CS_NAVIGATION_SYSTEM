@@ -1,18 +1,26 @@
 import { ArrowLeft, Building2, Mail, MapPin, Phone, Save, UserRound } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 import { validateLecturerProfile, type LecturerProfile } from './navigationLogic';
 
 type LecturerProfileManagerProps = {
   lecturer: LecturerProfile;
   onBack: () => void;
-  onSave: (lecturer: LecturerProfile) => void;
+  onSave: (lecturer: LecturerProfile) => Promise<void>;
   editable?: boolean;
 };
 
 export function LecturerProfileManager({ lecturer, onBack, onSave, editable = false }: LecturerProfileManagerProps) {
   const [form, setForm] = useState<LecturerProfile>(lecturer);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setForm(lecturer);
+    setError('');
+    setSuccess('');
+  }, [lecturer]);
 
   const canEdit = editable;
 
@@ -21,7 +29,7 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
     [form],
   );
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const validation = validateLecturerProfile(form);
     if (!validation.isValid) {
       setError(validation.errors[0]);
@@ -29,7 +37,16 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
     }
 
     setError('');
-    onSave(form);
+    setSuccess('');
+    setSaving(true);
+    try {
+      await onSave(form);
+      setSuccess('Profile changes saved.');
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save profile changes.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -66,6 +83,9 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
         {error && (
           <div className="mt-4 rounded-lg border border-amber-700/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-200">{error}</div>
         )}
+        {success && (
+          <div className="mt-4 rounded-lg border border-emerald-700/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">{success}</div>
+        )}
 
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.15em] text-slate-400">
@@ -94,6 +114,17 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
               value={form.department}
               onChange={(event) => setForm((current) => ({ ...current, department: event.target.value }))}
               disabled={!canEdit}
+              className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            />
+          </label>
+
+          <label className="flex flex-col gap-1 text-xs uppercase tracking-[0.15em] text-slate-400">
+            Fields of specialization
+            <input
+              value={form.specialization || ''}
+              onChange={(event) => setForm((current) => ({ ...current, specialization: event.target.value }))}
+              disabled={!canEdit}
+              placeholder="Not confirmed"
               className="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             />
           </label>
@@ -152,7 +183,7 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
         <div className="mt-5 grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">
             <div className="flex items-center gap-2 text-slate-400"><Mail size={12} /> Email</div>
-            <div className="mt-2 break-all">{form.email}</div>
+            <div className="mt-2 break-all">{form.email || 'Email not confirmed'}{form.email && !form.emailVerified && <span className="ml-2 text-amber-300">(provisional)</span>}</div>
           </div>
           <div className="rounded-xl border border-slate-700 bg-slate-950 p-3 text-sm text-slate-300">
             <div className="flex items-center gap-2 text-slate-400"><Phone size={12} /> Phone</div>
@@ -167,18 +198,18 @@ export function LecturerProfileManager({ lecturer, onBack, onSave, editable = fa
         <div className="mt-6 flex flex-wrap gap-2">
           <button
             type="button"
-            onClick={handleSave}
-            disabled={!canEdit}
+            onClick={() => void handleSave()}
+            disabled={!canEdit || saving}
             className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <Save size={14} /> Save changes
+            <Save size={14} /> {saving ? 'Saving…' : 'Save changes'}
           </button>
-          <a href={`mailto:${form.email}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-blue-500 hover:text-white">
+          {form.email && <a href={`mailto:${form.email}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-blue-500 hover:text-white">
             <Mail size={14} /> Email lecturer
-          </a>
-          <a href={`tel:${form.phone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-blue-500 hover:text-white">
+          </a>}
+          {form.phone && <a href={`tel:${form.phone.replace(/\s+/g, '')}`} className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200 hover:border-blue-500 hover:text-white">
             <Phone size={14} /> Call lecturer
-          </a>
+          </a>}
           <div className="inline-flex items-center gap-2 rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-sm text-slate-200">
             <MapPin size={14} /> {form.building} • {form.room}
           </div>

@@ -61,9 +61,9 @@ export function runDijkstra(
 
   distances[startNodeId] = 0;
 
-  let currentNodeId = startNodeId;
+  let currentNodeId: string | null = startNodeId;
 
-  while (currentNodeId) {
+  while (currentNodeId !== null) {
     visited.add(currentNodeId);
 
     if (currentNodeId === destinationNodeId) {
@@ -113,7 +113,7 @@ export function runDijkstra(
 
   while (cursor) {
     path.unshift(cursor);
-    const prev = previous[cursor];
+    const prev: string | null | undefined = previous[cursor];
     if (prev === null || prev === undefined) {
       break;
     }

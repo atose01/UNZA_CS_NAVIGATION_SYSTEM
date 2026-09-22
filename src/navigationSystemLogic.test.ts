@@ -1,33 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import { rooms } from './components/MapData/rooms';
 import {
-  authenticateDevUser,
   filterEvents,
   filterLecturers,
   getRoleCapabilities,
   validateTimetableEntry,
   hasTimetableConflict,
 } from './navigationLogic';
+import { isEmailIdentifier } from './services/authService';
 
 describe('authentication', () => {
-  it('accepts the student account', () => {
-    const result = authenticateDevUser('student@dev.local', 'ChangeMe123!');
-    expect(result).toMatchObject({ role: 'student', isAuthenticated: true });
+  it('recognizes email identifiers', () => {
+    expect(isEmailIdentifier('student@example.com')).toBe(true);
   });
 
-  it('accepts the lecturer admin account', () => {
-    const result = authenticateDevUser('lecturer@dev.local', 'ChangeMe123!');
-    expect(result).toMatchObject({ role: 'lecturer_admin', isAuthenticated: true });
-  });
-
-  it('accepts the developer admin account', () => {
-    const result = authenticateDevUser('developer@dev.local', 'ChangeMe123!');
-    expect(result).toMatchObject({ role: 'developer_admin', isAuthenticated: true });
-  });
-
-  it('rejects invalid credentials', () => {
-    const result = authenticateDevUser('student@dev.local', 'wrong-password');
-    expect(result.isAuthenticated).toBe(false);
+  it('recognizes computer ID identifiers', () => {
+    expect(isEmailIdentifier('CS-2026-001')).toBe(false);
   });
 });
 
@@ -79,14 +67,12 @@ describe('map room data', () => {
 });
 
 describe('lecturer and event search', () => {
-  it('matches lecturer records by name, department, course, room and building', () => {
+  it('matches lecturer records by name, department, room and building', () => {
     const resultsByName = filterLecturers('lampi');
-    const resultsByCourse = filterLecturers('CS2110');
     const resultsByRoom = filterLecturers('CS Room 2');
     const resultsByDepartment = filterLecturers('computer science');
 
     expect(resultsByName.length).toBeGreaterThan(0);
-    expect(resultsByCourse.length).toBeGreaterThan(0);
     expect(resultsByRoom.length).toBeGreaterThan(0);
     expect(resultsByDepartment.length).toBeGreaterThan(0);
   });

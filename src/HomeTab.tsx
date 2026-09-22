@@ -1,8 +1,23 @@
-import { Bell, Calendar, Clock, Map as MapIcon, Megaphone, Users } from 'lucide-react';
+import { Bell, Calendar, Map as MapIcon, Megaphone, Users } from 'lucide-react';
 
-import type { Session, Tab } from './navigationLogic';
+import type { Announcement, EventRecord, Session, Tab, TimetableEntry } from './navigationLogic';
+import type { DashboardSummary } from './services/appData';
 
-export function HomeTab({ session, onTabChange }: { session: Session; onTabChange: (tab: Tab) => void }) {
+export function HomeTab({
+  session,
+  onTabChange,
+  summary,
+  announcements,
+  events,
+  timetable,
+}: {
+  session: Session;
+  onTabChange: (tab: Tab) => void;
+  summary: DashboardSummary | null;
+  announcements: Announcement[];
+  events: EventRecord[];
+  timetable: TimetableEntry[];
+}) {
   const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const cards = [
     ['lecturers', 'Lecturers', 'View staff and offices', <Users size={18} />, '#1e3a6e'],
@@ -41,8 +56,25 @@ export function HomeTab({ session, onTabChange }: { session: Session; onTabChang
       </div>
 
       <div className="mt-4 grid gap-4 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4" />
-        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4" />
+        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200"><Bell size={15} className="text-blue-400" /> Department overview</div>
+          {summary ? (
+            <div className="grid grid-cols-2 gap-2 text-xs text-slate-400">
+              <div className="rounded-lg bg-slate-950 p-2">Lecturers <span className="float-right text-slate-100">{summary.totalLecturers}</span></div>
+              <div className="rounded-lg bg-slate-950 p-2">Rooms <span className="float-right text-slate-100">{summary.totalRooms}</span></div>
+              <div className="rounded-lg bg-slate-950 p-2">Upcoming events <span className="float-right text-slate-100">{summary.upcomingEvents}</span></div>
+              <div className="rounded-lg bg-slate-950 p-2">Upcoming classes <span className="float-right text-slate-100">{summary.upcomingClasses}</span></div>
+            </div>
+          ) : <div className="text-xs text-slate-500">Loading department information…</div>}
+        </div>
+        <div className="rounded-xl border border-slate-700 bg-slate-900 p-4">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-200"><Megaphone size={15} className="text-emerald-400" /> Latest updates</div>
+          {announcements.length > 0 ? (
+            <div className="space-y-2">
+              {announcements.slice(0, 2).map((announcement) => <div key={announcement.id} className="block w-full rounded-lg bg-slate-950 p-2 text-left text-xs text-slate-300"><span className="font-medium text-slate-100">{announcement.title}</span><span className="mt-1 block line-clamp-1 text-slate-500">{announcement.body}</span></div>)}
+            </div>
+          ) : events.length > 0 || timetable.length > 0 ? <div className="text-xs text-slate-500">No recent announcements.</div> : <div className="text-xs text-slate-500">Loading department updates…</div>}
+        </div>
       </div>
     </div>
   );

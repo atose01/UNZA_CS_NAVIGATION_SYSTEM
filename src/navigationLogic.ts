@@ -4,18 +4,23 @@ export type View = 'login' | 'dashboard';
 export type Tab = 'home' | 'lecturers' | 'map' | 'events';
 
 export type Session = {
+  userId?: string;
   email: string;
   displayName: string;
   role: Role;
   mode: LoginMode;
   lecturerProfileId?: string;
+  mustChangePassword?: boolean;
 };
 
 export type LecturerProfile = {
   id: string;
+  userId?: string;
   fullName: string;
   academicTitle: string;
   department: string;
+  specialization?: string;
+  emailVerified?: boolean;
   coursesTaught: string[];
   email: string;
   phone: string;
@@ -73,50 +78,6 @@ export type TimetableEntry = {
   syncToGoogleCalendar?: boolean;
 };
 
-export const DEV_ACCOUNTS = [
-  {
-    email: import.meta.env.VITE_STUDENT_EMAIL || 'student@dev.local',
-    password: import.meta.env.VITE_STUDENT_PASSWORD || 'ChangeMe123!',
-    role: 'student' as Role,
-    displayName: 'Student User',
-  },
-  {
-    email: import.meta.env.VITE_LECTURER_EMAIL || 'lecturer@dev.local',
-    password: import.meta.env.VITE_LECTURER_PASSWORD || 'ChangeMe123!',
-    role: 'lecturer_admin' as Role,
-    displayName: 'Lecturer Admin',
-  },
-  {
-    email: import.meta.env.VITE_DEVELOPER_EMAIL || 'developer@dev.local',
-    password: import.meta.env.VITE_DEVELOPER_PASSWORD || 'ChangeMe123!',
-    role: 'developer_admin' as Role,
-    displayName: 'Developer Admin',
-  },
-];
-
-export function authenticateDevUser(email: string, password: string) {
-  const account = DEV_ACCOUNTS.find(
-    (entry) => entry.email.toLowerCase() === email.trim().toLowerCase(),
-  );
-
-  if (!account || account.password !== password) {
-    return {
-      isAuthenticated: false,
-      role: 'student' as Role,
-      email: email.trim(),
-      displayName: 'Unknown User',
-    };
-  }
-
-  return {
-    isAuthenticated: true,
-    role: account.role,
-    email: account.email,
-    displayName: account.displayName,
-    lecturerProfileId: account.role === 'lecturer_admin' ? 'lecturer-1' : undefined,
-  };
-}
-
 export function getRoleCapabilities(role: Role) {
   return {
     canCreateTimetable: role === 'lecturer_admin' || role === 'developer_admin',
@@ -125,7 +86,7 @@ export function getRoleCapabilities(role: Role) {
     canManageAnnouncements: role === 'lecturer_admin' || role === 'developer_admin',
     canPublishAnnouncements: role === 'lecturer_admin' || role === 'developer_admin',
     canManageRooms: role === 'developer_admin',
-    canManageMap: role === 'developer_admin' || role === 'lecturer_admin',
+    canManageMap: role === 'developer_admin',
     canManageLecturers: role === 'developer_admin',
     canManageEvents: role === 'lecturer_admin' || role === 'developer_admin',
     canManageOwnProfile: role === 'lecturer_admin' || role === 'developer_admin',
@@ -142,8 +103,11 @@ export function validateLecturerProfile(profile: Partial<LecturerProfile>) {
   if (!profile.department || !String(profile.department).trim()) {
     errors.push('Department is required.');
   }
-  if (!profile.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(profile.email).trim())) {
-    errors.push('A valid email address is required.');
+  if (profile.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(profile.email).trim())) {
+    errors.push('Email address format is invalid.');
+  }
+  if (profile.email && !String(profile.email).trim().toLowerCase().endsWith('@cs.unza.zm')) {
+    errors.push('Lecturer email addresses must use the @cs.unza.zm domain.');
   }
   if (profile.phone && !/^[+0-9()\-\s]{7,20}$/.test(String(profile.phone).trim())) {
     errors.push('Phone number format is invalid.');
@@ -186,9 +150,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Dr E. Lampi',
     academicTitle: 'Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS2110 Programming Fundamentals', 'CS3105 Computer Systems'],
-    email: 'e.lampi@cs.unza.zm',
-    phone: '+260 955 100 111',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 2',
@@ -201,9 +165,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Mr Mofya Phiri',
     academicTitle: 'Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS2201 Database Systems', 'CS3120 Software Engineering'],
-    email: 'm.phiri@cs.unza.zm',
-    phone: '+260 955 100 222',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 2',
@@ -216,9 +180,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Mr A. Theu',
     academicTitle: 'Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS1030 Introduction to Computing', 'CS2205 Database Management'],
-    email: 'a.theu@cs.unza.zm',
-    phone: '+260 955 100 333',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 3',
@@ -231,9 +195,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Mr M. Phiri',
     academicTitle: 'Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS3120 Data Structures', 'CS4201 Algorithms'],
-    email: 'm.phiri2@cs.unza.zm',
-    phone: '+260 955 100 444',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 3',
@@ -246,9 +210,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Mr D. Zulu',
     academicTitle: 'Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS3204 Computer Networks', 'CS4010 Cloud Computing'],
-    email: 'd.zulu@cs.unza.zm',
-    phone: '+260 955 100 555',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 4',
@@ -261,9 +225,9 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
     fullName: 'Prof J. Phiri',
     academicTitle: 'Professor',
     department: 'Computer Science',
-    coursesTaught: ['CS4301 Artificial Intelligence', 'CS5100 Research Methods'],
-    email: 'j.phiri@cs.unza.zm',
-    phone: '+260 955 100 666',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 5',
@@ -273,32 +237,17 @@ export const LECTURER_PROFILES: LecturerProfile[] = [
   },
   {
     id: 'lecturer-7',
-    fullName: 'Mrs Monica Kabemba',
+    fullName: 'Mrs Monica M. Kabemba',
     academicTitle: 'Senior Lecturer',
     department: 'Computer Science',
-    coursesTaught: ['CS2105 Human-Computer Interaction', 'CS4303 HCI Design Studio'],
-    email: 'm.kabemba@cs.unza.zm',
-    phone: '+260 955 100 777',
+    coursesTaught: [],
+    email: '',
+    phone: '',
     building: 'Computer Science Building',
     floor: 'Ground Floor',
     room: 'CS Room 6',
     profileImage: '',
     officeRoomId: 'cs-r6',
-    status: 'active',
-  },
-  {
-    id: 'lecturer-8',
-    fullName: 'Head of Department',
-    academicTitle: 'HoD & Professor',
-    department: 'Computer Science',
-    coursesTaught: ['Department Administration', 'Research Guidance'],
-    email: 'hod.cs@unza.zm',
-    phone: '+260 955 100 888',
-    building: 'Computer Science Building',
-    floor: 'First Floor',
-    room: 'Head of Department Office',
-    profileImage: '',
-    officeRoomId: 'hod',
     status: 'active',
   },
 ];

@@ -9,6 +9,7 @@ export interface GraphEdge {
   from: string;
   to: string;
   weight: number;
+  bidirectional?: boolean;
 }
 
 export const navigationGraphNodes: GraphNode[] = [

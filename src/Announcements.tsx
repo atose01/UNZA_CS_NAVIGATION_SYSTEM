@@ -14,9 +14,9 @@ export function AnnouncementsTab({
   session: Session;
   announcements: Announcement[];
   canManage: boolean;
-  onPublish: (entry: Announcement) => void;
-  onDelete: (id: string) => void;
-  onUpdate: (entry: Announcement) => void;
+  onPublish: (entry: Announcement) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
+  onUpdate: (entry: Announcement) => Promise<void> | void;
 }) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState('');
@@ -30,7 +30,7 @@ export function AnnouncementsTab({
     status: 'published' as const,
   });
 
-  const submitAnnouncement = () => {
+  const submitAnnouncement = async () => {
     if (!form.title.trim() || !form.body.trim()) {
       setError('Title and message are required.');
       return;
@@ -50,18 +50,22 @@ export function AnnouncementsTab({
       type: form.isUrgent ? 'urgent' : 'info',
     };
 
-    onPublish(next);
-    setForm({
-      title: '',
-      body: '',
-      isUrgent: false,
-      expiresAt: '',
-      course: '',
-      venue: '',
-      status: 'published',
-    });
-    setError('');
-    setOpen(false);
+    try {
+      await onPublish(next);
+      setForm({
+        title: '',
+        body: '',
+        isUrgent: false,
+        expiresAt: '',
+        course: '',
+        venue: '',
+        status: 'published',
+      });
+      setError('');
+      setOpen(false);
+    } catch (publishError) {
+      setError(publishError instanceof Error ? publishError.message : 'Unable to publish announcement.');
+    }
   };
 
   return (
@@ -109,7 +113,7 @@ export function AnnouncementsTab({
               <div className="mt-3 flex gap-2">
                 <button
                   onClick={() =>
-                    onUpdate({
+                    void onUpdate({
                       ...announcement,
                       isUrgent: !announcement.isUrgent,
                       type: announcement.isUrgent ? 'info' : 'urgent',
@@ -120,7 +124,7 @@ export function AnnouncementsTab({
                   {announcement.isUrgent ? 'Mark normal' : 'Mark urgent'}
                 </button>
                 <button
-                  onClick={() => onDelete(announcement.id)}
+                  onClick={() => void onDelete(announcement.id)}
                   className="rounded border border-rose-800/50 px-2 py-1 text-[10px] text-rose-300"
                 >
                   Delete
@@ -207,7 +211,7 @@ export function AnnouncementsTab({
               <button onClick={() => setOpen(false)} className="rounded-lg border border-slate-700 px-4 py-2 text-slate-300">
                 Cancel
               </button>
-              <button onClick={submitAnnouncement} className="rounded-lg px-4 py-2 text-white" style={{ background: '#22c55e' }}>
+               <button onClick={() => void submitAnnouncement()} className="rounded-lg px-4 py-2 text-white" style={{ background: '#22c55e' }}>
                 Publish
               </button>
             </div>

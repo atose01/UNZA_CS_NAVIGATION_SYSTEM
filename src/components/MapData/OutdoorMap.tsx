@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { OutdoorDestination } from './outdoorDestinations';
 import { outdoorDestinations, outdoorDestinationsPending, csDepartmentConfig } from './outdoorDestinations';
+import { listOutdoorDestinations } from '../../services/appData';
 
 const UNZA_CENTER = { lat: -15.3923, lng: 28.3285 };
 const UNZA_ZOOM = 16;
@@ -32,11 +33,21 @@ export function OutdoorMap() {
   const mapRef = useRef<google.maps.Map | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [dataLoading, setDataLoading] = useState(true);
   const [userLocation, setUserLocation] = useState<google.maps.LatLngLiteral | null>(null);
   const [locating, setLocating] = useState(false);
+  const [destinations, setDestinations] = useState<OutdoorDestination[]>(outdoorDestinations);
   const userMarkerRef = useRef<google.maps.Marker | null>(null);
   const accuracyCircleRef = useRef<google.maps.Circle | null>(null);
+  const destinationMarkersRef = useRef<google.maps.Marker[]>([]);
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+
+  useEffect(() => {
+    void listOutdoorDestinations()
+      .then(setDestinations)
+      .catch((loadError) => setError(loadError instanceof Error ? loadError.message : 'Unable to load outdoor destinations.'))
+      .finally(() => setDataLoading(false));
+  }, []);
 
   useEffect(() => {
     if (!apiKey) {
@@ -91,7 +102,10 @@ export function OutdoorMap() {
           return `data:image/svg+xml;charset=UTF-8,${svg}`;
         }
 
-        for (const dest of outdoorDestinations) {
+        destinationMarkersRef.current.forEach((marker) => marker.setMap(null));
+        destinationMarkersRef.current = [];
+
+        for (const dest of destinations) {
           if (!dest.verified) continue;
 
           const marker = new (window as any).google.maps.Marker({
@@ -152,6 +166,7 @@ export function OutdoorMap() {
           });
 
           markers.push(marker);
+          destinationMarkersRef.current.push(marker);
         }
 
         // Expose markers array for potential clustering/filtering (kept local for now)
@@ -170,7 +185,7 @@ export function OutdoorMap() {
         console.error('Google Maps load error', err);
         setError('Failed to load Google Maps. Check your API key and network.');
       });
-  }, [apiKey]);
+  }, [apiKey, destinations]);
 
   const handleMyLocation = useCallback(() => {
     if (locating) return;
@@ -348,6 +363,7 @@ export function OutdoorMap() {
         <div className="rounded-xl border border-red-600/30 bg-red-900/10 p-3 text-sm text-red-200">{error}</div>
       ) : (
         <div className="relative">
+          {dataLoading && <div className="absolute bottom-3 left-3 z-50 rounded bg-slate-900/80 px-3 py-2 text-xs text-slate-300">Loading destinations…</div>}
           <div className="absolute top-3 left-3 z-50 flex items-center gap-2">
             <button
               type="button"
@@ -374,7 +390,7 @@ export function OutdoorMap() {
                   onClick={() => {
                     const q = searchQuery.trim().toLowerCase();
                     if (!q) return;
-                    const found = outdoorDestinations.find((d) => d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q));
+                    const found = destinations.find((d) => d.name.toLowerCase().includes(q) || d.category.toLowerCase().includes(q));
                     if (found) handleSearchSelect(found);
                   }}
                   className="rounded bg-slate-700/40 px-2 py-1 text-xs text-slate-200"

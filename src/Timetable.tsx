@@ -14,9 +14,9 @@ export function TimetableTab({
   session: Session;
   entries: TimetableEntry[];
   canManage: boolean;
-  onAdd: (entry: TimetableEntry) => void;
-  onUpdate: (entry: TimetableEntry) => void;
-  onDelete: (id: string) => void;
+  onAdd: (entry: TimetableEntry) => Promise<void> | void;
+  onUpdate: (entry: TimetableEntry) => Promise<void> | void;
+  onDelete: (id: string) => Promise<void> | void;
 }) {
   const [selectedDate, setSelectedDate] = useState(entries[0]?.date || '2026-09-21');
   const [mode, setMode] = useState<'daily' | 'weekly' | 'upcoming'>('weekly');
@@ -51,7 +51,7 @@ export function TimetableTab({
 
   const uniqueDates = useMemo(() => [...new Set(entries.map((entry) => entry.date))].sort(), [entries]);
 
-  const submitEntry = () => {
+  const submitEntry = async () => {
     const candidate: TimetableEntry = {
       id: editingId || `entry-${Date.now()}`,
       courseCode: form.courseCode.trim(),
@@ -79,31 +79,32 @@ export function TimetableTab({
       return;
     }
 
-    if (editingId) {
-      onUpdate(candidate);
-    } else {
-      onAdd(candidate);
-    }
+    try {
+      if (editingId) await onUpdate(candidate);
+      else await onAdd(candidate);
 
-    setSelectedDate(candidate.date);
-    setError('');
-    setOpen(false);
-    setEditingId(null);
-    setForm({
-      id: '',
-      courseCode: 'CS2201',
-      courseName: 'Database Systems',
-      classTitle: 'Lecture',
-      lecturer: 'Mr A. Theu',
-      venue: 'Computer Lab 1',
-      roomId: 'Computer Lab 1',
-      date: candidate.date,
-      startTime: '09:00',
-      endTime: '10:30',
-      description: '',
-      recurrence: 'Weekly',
-      syncToGoogleCalendar: false,
-    });
+      setSelectedDate(candidate.date);
+      setError('');
+      setOpen(false);
+      setEditingId(null);
+      setForm({
+        id: '',
+        courseCode: 'CS2201',
+        courseName: 'Database Systems',
+        classTitle: 'Lecture',
+        lecturer: 'Mr A. Theu',
+        venue: 'Computer Lab 1',
+        roomId: 'Computer Lab 1',
+        date: candidate.date,
+        startTime: '09:00',
+        endTime: '10:30',
+        description: '',
+        recurrence: 'Weekly',
+        syncToGoogleCalendar: false,
+      });
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : 'Unable to save timetable entry.');
+    }
   };
 
   return (
@@ -205,7 +206,7 @@ export function TimetableTab({
                     >
                       Edit
                     </button>
-                    <button onClick={() => onDelete(entry.id)} className="text-rose-300">
+                    <button onClick={() => void onDelete(entry.id)} className="text-rose-300">
                       Delete
                     </button>
                   </>
@@ -265,7 +266,7 @@ export function TimetableTab({
                   >
                     Edit
                   </button>
-                  <button onClick={() => onDelete(entry.id)} className="rounded border border-rose-900/60 px-2 py-1 text-[10px] text-rose-300">
+                  <button onClick={() => void onDelete(entry.id)} className="rounded border border-rose-900/60 px-2 py-1 text-[10px] text-rose-300">
                     Delete
                   </button>
                 </div>
@@ -385,7 +386,7 @@ export function TimetableTab({
                 <button onClick={() => setOpen(false)} className="rounded-lg border border-slate-700 px-4 py-2 text-slate-300">
                   Cancel
                 </button>
-                <button onClick={submitEntry} className="rounded-lg px-4 py-2 text-white" style={{ background: '#f59e0b' }}>
+                <button onClick={() => void submitEntry()} className="rounded-lg px-4 py-2 text-white" style={{ background: '#f59e0b' }}>
                   Save
                 </button>
               </div>

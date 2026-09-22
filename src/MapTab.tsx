@@ -9,7 +9,6 @@ import {
   MapPin,
   Navigation,
   Trees,
-  Walk,
 } from 'lucide-react';
 
 import type { Role } from './navigationLogic';
@@ -152,7 +151,7 @@ export function MapTab({ role }: { role: Role }) {
                 <div className="text-lg font-semibold text-slate-100">Campus Wayfinding</div>
               </div>
               <div className="inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 text-[11px] text-blue-200">
-                <Walk size={12} /> On foot
+                <Footprints size={12} /> On foot
               </div>
             </div>
 

@@ -7,6 +7,7 @@ import { IndoorMap } from './IndoorMap';
 import OutdoorMap from './OutdoorMap';
 import { navigationGraphEdges, navigationGraphNodes } from './navigationGraph';
 import { rooms } from './rooms';
+import { getIndoorMapData } from '../../services/appData';
 
 type NavigationMode = 'indoor' | 'outdoor';
 
@@ -19,6 +20,23 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
   const [destinationRoomId, setDestinationRoomId] = useState<string>('lab-1');
   const [routePath, setRoutePath] = useState<string[]>([]);
   const [routeInfo, setRouteInfo] = useState<{ totalDistance: number; walkingTime: number; steps: string[] } | null>(null);
+  const [mapData, setMapData] = useState({ rooms, nodes: navigationGraphNodes, edges: navigationGraphEdges });
+  const [mapLoading, setMapLoading] = useState(true);
+  const [mapError, setMapError] = useState('');
+
+  useEffect(() => {
+    void getIndoorMapData()
+      .then((data) => {
+        setMapData(data);
+        setMapError('');
+      })
+      .catch((error) => setMapError(error instanceof Error ? error.message : 'Unable to load indoor map data.'))
+      .finally(() => setMapLoading(false));
+  }, []);
+
+  const activeRooms = mapData.rooms;
+  const activeNodes = mapData.nodes;
+  const activeEdges = mapData.edges;
 
   useEffect(() => {
     if (!destinationRoomIdProp) {
@@ -28,15 +46,15 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
     setDestinationRoomId(destinationRoomIdProp);
     setSelectedRoomId(destinationRoomIdProp);
     setNavigationMode('indoor');
-    const room = rooms.find((entry) => entry.id === destinationRoomIdProp);
+    const room = activeRooms.find((entry) => entry.id === destinationRoomIdProp);
     if (room && room.navigationNodeId) {
       handleGetDirectionsForRoom(destinationRoomIdProp);
     }
-  }, [destinationRoomIdProp]);
+  }, [destinationRoomIdProp, activeRooms]);
 
   const selectedRoom = useMemo(
-    () => rooms.find((room) => room.id === selectedRoomId) ?? null,
-    [selectedRoomId],
+    () => activeRooms.find((room) => room.id === selectedRoomId) ?? null,
+    [activeRooms, selectedRoomId],
   );
 
   const showOutdoorMode = navigationMode === 'outdoor';
@@ -44,20 +62,22 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
   const graph = useMemo(() => {
     const adjacency: Record<string, { id: string; neighbors: Array<{ nodeId: string; weight: number }> }> = {};
 
-    for (const node of navigationGraphNodes) {
+    for (const node of activeNodes) {
       adjacency[node.id] = { id: node.id, neighbors: [] };
     }
 
-    for (const edge of navigationGraphEdges) {
+    for (const edge of activeEdges) {
       adjacency[edge.from]?.neighbors.push({ nodeId: edge.to, weight: edge.weight });
-      adjacency[edge.to]?.neighbors.push({ nodeId: edge.from, weight: edge.weight });
+      if (edge.bidirectional !== false) {
+        adjacency[edge.to]?.neighbors.push({ nodeId: edge.from, weight: edge.weight });
+      }
     }
 
     return adjacency;
-  }, []);
+  }, [activeEdges, activeNodes]);
 
   const getNodeIdForRoom = (roomId: string) => {
-    const room = rooms.find((entry) => entry.id === roomId);
+    const room = activeRooms.find((entry) => entry.id === roomId);
     return room?.navigationNodeId ?? null;
   };
 
@@ -96,8 +116,8 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
     }
 
     const walkingTimeMinutes = result.totalDistance / WALKING_SPEED_METERS_PER_MINUTE;
-    const roomStart = rooms.find((room) => room.id === startRoomId);
-    const roomDestination = rooms.find((room) => room.id === destinationRoomId);
+    const roomStart = activeRooms.find((room) => room.id === startRoomId);
+    const roomDestination = activeRooms.find((room) => room.id === destinationRoomId);
     const steps = [
       `Start at ${roomStart?.name ?? 'the selected start point'}.`,
       'Continue along the corridor network.',
@@ -132,6 +152,8 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
 
         <h2 className="text-2xl font-bold tracking-tight text-slate-100">Navigation</h2>
         <p className="mt-1 text-sm text-slate-400">Indoor and outdoor campus wayfinding.</p>
+        {mapLoading && <div className="mt-3 rounded-lg border border-slate-700 bg-slate-950/60 px-3 py-2 text-xs text-slate-400">Loading map data…</div>}
+        {mapError && <div className="mt-3 rounded-lg border border-amber-700/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">{mapError}</div>}
 
         <div className="mt-4 inline-flex w-full flex-wrap gap-2 rounded-xl border border-slate-700 bg-slate-950 p-1 sm:w-auto">
           {(['indoor', 'outdoor'] as const).map((mode) => {
@@ -182,7 +204,7 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
                     onChange={(event) => setStartRoomId(event.target.value)}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
                   >
-                    {rooms.map((room) => (
+                    {activeRooms.map((room) => (
                       <option key={room.id} value={room.id}>
                         {room.name}
                       </option>
@@ -197,7 +219,7 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
                     onChange={(event) => setDestinationRoomId(event.target.value)}
                     className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm text-slate-100 outline-none focus:border-blue-500"
                   >
-                    {rooms.map((room) => (
+                    {activeRooms.map((room) => (
                       <option key={room.id} value={room.id}>
                         {room.name}
                       </option>
@@ -247,7 +269,9 @@ export function MapTab({ role, destinationRoomId: destinationRoomIdProp }: { rol
               onSelectRoom={setSelectedRoomId}
               routePath={routePath}
               startNodeId={getNodeIdForRoom(startRoomId)}
-              endNodeId={getNodeIdForRoom(destinationRoomId)}
+               endNodeId={getNodeIdForRoom(destinationRoomId)}
+               rooms={activeRooms}
+               navigationNodes={activeNodes}
             />
           </div>
 
