@@ -1,0 +1,10 @@
+{
+  "description": "UNZA CS Navigation System helps students and staff navigate the department, access announcements, timetable information, and room details more efficiently.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
